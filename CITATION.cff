@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this research prototype, please cite this repository and the upstream model papers."
+title: "Trustworthy TLS Pathology Audit"
+type: software
+authors:
+  - family-names: "Li"
+    given-names: "Kaicheng"
+version: 0.1.0
+date-released: 2026-08-10
+license: MIT
+keywords:
+  - computational pathology
+  - tertiary lymphoid structures
+  - robustness
+  - uncertainty
+  - interpretability

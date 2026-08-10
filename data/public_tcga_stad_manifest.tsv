@@ -1,0 +1,11 @@
+split	selection_rank	slide_id	gdc_file_id	md5	access	notes
+v1_locked	1	TCGA-BR-8382-01Z-00-DX1	2a4483a1-dd6c-43c5-9cac-253ff046bacc	c45a073ab74814fedd2dfcd0dfa51666	open	zero postprocessed candidate detections
+v1_locked	2	TCGA-R5-A7ZI-01Z-00-DX1	08c57d33-6c74-49e9-b4d6-5d95baef6823	5c7e474e2e2be2400a852b1f6252c2c0	open	zero postprocessed candidate detections
+v1_locked	3	TCGA-FP-A4BE-01Z-00-DX1	ac099459-b3f4-42c8-9414-552d1939967f	97295bc9874cb459674b93fb2ed9747c	open	detected-slide audit
+v1_locked	4	TCGA-BR-8683-01Z-00-DX1	998cc268-65d0-46d0-9770-e172ce1f92fa	d564ce6f41ddcd753519ca75dbba2794	open	detected-slide audit
+v1_locked	5	TCGA-BR-8677-01Z-00-DX1	a8575dde-0885-46ec-b16c-4f6a50f29031	d5fdf2a05d36f5045e502880edd7135d	open	detected-slide audit
+v2_stratified	1	TCGA-CD-5803-01Z-00-DX1	not_archived	not_archived	open	detected-slide expansion
+v2_stratified	2	TCGA-BR-8484-01Z-00-DX1	not_archived	not_archived	open	detected-slide expansion
+v2_stratified	3	TCGA-F1-A448-01Z-00-DX1	not_archived	not_archived	open	detected-slide expansion
+v2_stratified	4	TCGA-HF-7133-01Z-00-DX1	not_archived	not_archived	open	detected-slide expansion
+v2_stratified	5	TCGA-BR-A44T-01Z-00-DX1	not_archived	not_archived	open	detected-slide expansion

@@ -1,0 +1,33 @@
+{
+  "status": "research_prototype",
+  "pathology_ground_truth": false,
+  "scope": {
+    "public_tcga_stad_slides_screened": 10,
+    "slides_with_postprocessed_candidates": 8,
+    "model_generated_candidate_objects": 84
+  },
+  "yolo_robustness": {
+    "production_hard_cascade_stable_across_0_to_40_percent_padding": 41,
+    "derived_top1_stable_across_0_to_40_percent_padding": 40,
+    "objects_flipping_under_mild_colour_or_encoding_variants": 10,
+    "objects_flipping_after_macenko_normalization": 48,
+    "step1_gradcam_polygon_enrichment_gt_1": 75,
+    "step2_gradcam_polygon_enrichment_gt_1": 20
+  },
+  "pathprism_cross_model_consistency": {
+    "detected_slides_with_positive_inner_lym_paired_effect": 8,
+    "detected_slides_total": 8,
+    "mean_of_slide_mean_paired_deltas": 0.4164,
+    "exploratory_slide_cluster_bootstrap_95_percent_interval": [
+      0.2302,
+      0.6018
+    ]
+  },
+  "interpretation_boundary": [
+    "All candidate and tissue labels are model outputs rather than pathology ground truth.",
+    "HookNet, YOLO and PathPrism use the same H&E source; agreement is not independent biological validation.",
+    "Object-level observations are nested within slides and are not independent patients.",
+    "Grad-CAM, occlusion and blurred counterfactuals describe model dependence rather than biological causality.",
+    "No sensitivity, specificity, accuracy or clinical utility claim is supported."
+  ]
+}

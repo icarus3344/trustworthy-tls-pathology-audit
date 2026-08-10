@@ -1,0 +1,23 @@
+project:
+  name: trustworthy-tls-pathology-audit
+  purpose: engineering_reliability_audit
+  clinical_use: false
+
+inputs:
+  public_slide_manifest: data/public_tcga_stad_manifest.tsv
+  wsi_root: LOCAL_WSI_ROOT
+  hooknet_xml_root: LOCAL_HOOKNET_XML_ROOT
+  yolo_step1_weights: UPSTREAM_STEP1_CHECKPOINT
+  yolo_step2_weights: UPSTREAM_STEP2_CHECKPOINT
+  prismnet_checkpoint: UPSTREAM_PRISMNET_CHECKPOINT
+
+geometry:
+  padding_fractions: [0.0, 0.05, 0.10, 0.15, 0.25, 0.40]
+  pathprism_tile_microns: [112, 256]
+  radial_bins_microns: [0, 250, 500, 1000]
+  matched_controls_per_object: 3
+
+interpretation:
+  pathology_ground_truth_available: false
+  primary_unit: slide
+  allow_accuracy_claims: false

@@ -1,0 +1,58 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Secrets and local configuration
+.env
+.env.*
+*.key
+*.pem
+*PRIVATE*
+*CASE_MAPPING*
+
+# Whole-slide images and biomedical data
+*.svs
+*.ndpi
+*.mrxs
+*.tif
+*.tiff
+*.h5
+*.hdf5
+*.h5ad
+*.npy
+*.npz
+*.RData
+*.rds
+
+# Models, archives and generated runs
+*.pt
+*.pth
+*.ckpt
+*.zip
+*.tar
+*.tar.gz
+weights/
+data/raw/
+data/derived/
+outputs/
+runs/
+logs/
+
+# Papers and presentations are not source artifacts
+*.pdf
+*.ppt
+*.pptx
+
+# The one deliberately public, de-identified manifest
+!data/public_tcga_stad_manifest.tsv
