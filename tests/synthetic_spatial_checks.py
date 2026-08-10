@@ -9,13 +9,21 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from tls_audit.spatial_features import (
-    CLASSES, boundary_pair_features, build_label_grid, lym_bridge_count,
-    polygon_center_um, proximity_pair_features, select_controls, window_features,
+    CLASSES,
+    boundary_pair_features,
+    build_label_grid,
+    lym_bridge_count,
+    polygon_center_um,
+    proximity_pair_features,
+    select_controls,
+    window_features,
 )
 
 
 def grid(rows):
-    return np.asarray([[CLASSES.index(x) if x != "." else -1 for x in row] for row in rows], dtype=np.int16)
+    return np.asarray(
+        [[CLASSES.index(x) if x != "." else -1 for x in row] for row in rows], dtype=np.int16
+    )
 
 
 def run():
@@ -38,23 +46,27 @@ def run():
     assert lym_bridge_count(g) == 1
 
     # 5: Sparse coordinate gaps remain gaps; no accidental compressed adjacency.
-    t = pd.DataFrame({
-        "center_x_um": [128, 5 * 256 + 128],
-        "center_y_um": [128, 128],
-        "predicted_class": ["LYM", "TUM"],
-        "confidence": [1.0, 1.0],
-    })
+    t = pd.DataFrame(
+        {
+            "center_x_um": [128, 5 * 256 + 128],
+            "center_y_um": [128, 128],
+            "predicted_class": ["LYM", "TUM"],
+            "confidence": [1.0, 1.0],
+        }
+    )
     sparse, _ = build_label_grid(t, 0, 256)
     assert sparse.shape == (1, 6)
     assert boundary_pair_features(sparse, "LYM", "TUM", 256)["lym_tum_contact_pair_count"] == 0
 
     # 6: Physical centre alignment selects the intended tile, not its transpose.
-    t = pd.DataFrame({
-        "center_x_um": [3 * 256 + 128],
-        "center_y_um": [1 * 256 + 128],
-        "predicted_class": ["LYM"],
-        "confidence": [1.0],
-    })
+    t = pd.DataFrame(
+        {
+            "center_x_um": [3 * 256 + 128],
+            "center_y_um": [1 * 256 + 128],
+            "predicted_class": ["LYM"],
+            "confidence": [1.0],
+        }
+    )
     aligned, _ = build_label_grid(t, 0, 256)
     assert aligned[1, 3] == CLASSES.index("LYM")
     wf = window_features(aligned, 3 * 256 + 128, 1 * 256 + 128, 200, 256)
@@ -63,14 +75,20 @@ def run():
     # 7: One intervening cell is near-contact at 512 um but not direct contact.
     g = grid([["LYM", ".", "TUM"]])
     assert boundary_pair_features(g, "LYM", "TUM", 256)["lym_tum_contact_pair_count"] == 0
-    assert proximity_pair_features(g, "LYM", "TUM", 2, 256)["lym_tum_proximity_pair_count_512um"] == 1
+    assert (
+        proximity_pair_features(g, "LYM", "TUM", 2, 256)["lym_tum_proximity_pair_count_512um"] == 1
+    )
 
     # 8: Confidence threshold turns a low-confidence tile into unassigned.
-    t = pd.DataFrame({
-        "center_x_um": [128], "center_y_um": [128],
-        "predicted_class": ["LYM"], "confidence": [0.49],
-    })
-    low, _ = build_label_grid(t, .5, 256)
+    t = pd.DataFrame(
+        {
+            "center_x_um": [128],
+            "center_y_um": [128],
+            "predicted_class": ["LYM"],
+            "confidence": [0.49],
+        }
+    )
+    low, _ = build_label_grid(t, 0.5, 256)
     assert low[0, 0] == -1
 
     # 9: Three controls are selected for one TLS and are unique when feasible.
@@ -82,9 +100,16 @@ def run():
     assert [x["control_id"] for x in controls] == [1, 2, 3]
 
     # 10: Area centroid is not biased by uneven sampling of a polygon edge.
-    uneven_rectangle = np.asarray([
-        [0, 0], [10, 0], [10, 2], [10, 10], [0, 10],
-    ], dtype=float)
+    uneven_rectangle = np.asarray(
+        [
+            [0, 0],
+            [10, 0],
+            [10, 2],
+            [10, 10],
+            [0, 10],
+        ],
+        dtype=float,
+    )
     area_center = polygon_center_um(uneven_rectangle, mpp=0.5)
     vertex_center = polygon_center_um(uneven_rectangle, mpp=0.5, method="vertex_mean")
     assert np.allclose(area_center, (2.5, 2.5))

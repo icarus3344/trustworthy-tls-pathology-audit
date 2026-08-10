@@ -21,13 +21,10 @@ output, but is not silently folded into these derived scores.
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import io
 import json
-import math
 import platform
-import sys
 from pathlib import Path
 
 import cv2
@@ -39,10 +36,9 @@ import numpy as np
 import openslide
 import pandas as pd
 import PIL
-from PIL import Image, ImageDraw
 import torch
+from PIL import Image
 from ultralytics import YOLO
-
 
 PADDINGS = [0.0, 0.05, 0.10, 0.15, 0.25, 0.40]
 FINAL_CLASSES = ["E-TLS", "P-TLS", "S-TLS"]
@@ -205,9 +201,7 @@ def polygon_mask(
 ) -> np.ndarray:
     crop_x, crop_y = origin
     width, height = size
-    points = np.array(
-        [[round(x - crop_x), round(y - crop_y)] for x, y in polygon], dtype=np.int32
-    )
+    points = np.array([[round(x - crop_x), round(y - crop_y)] for x, y in polygon], dtype=np.int32)
     mask = np.zeros((height, width), dtype=np.uint8)
     cv2.fillPoly(mask, [points], 255)
     return mask
@@ -216,18 +210,20 @@ def polygon_mask(
 def crop_object(
     slide: openslide.OpenSlide, obj: dict, padding: float
 ) -> tuple[np.ndarray, np.ndarray, dict]:
-    x, y, width, height, clamped = crop_geometry(
-        obj["level0_bbox"], padding, slide.dimensions
-    )
+    x, y, width, height, clamped = crop_geometry(obj["level0_bbox"], padding, slide.dimensions)
     rgb = np.asarray(slide.read_region((x, y), 0, (width, height)).convert("RGB"))
     mask = polygon_mask(obj["polygon_coordinates"], (x, y), (width, height))
-    return rgb, mask, {
-        "crop_x": x,
-        "crop_y": y,
-        "crop_width": width,
-        "crop_height": height,
-        "clamped": clamped,
-    }
+    return (
+        rgb,
+        mask,
+        {
+            "crop_x": x,
+            "crop_y": y,
+            "crop_width": width,
+            "crop_height": height,
+            "clamped": clamped,
+        },
+    )
 
 
 class CascadeModels:
@@ -281,11 +277,7 @@ class CascadeModels:
         for start in range(0, len(images), batch_size):
             chunk = np.stack(images[start : start + batch_size], axis=0)
             tensor = (
-                torch.from_numpy(chunk)
-                .permute(0, 3, 1, 2)
-                .contiguous()
-                .float()
-                .to(self.device)
+                torch.from_numpy(chunk).permute(0, 3, 1, 2).contiguous().float().to(self.device)
             )
             prediction1 = self.net1(tensor)
             prediction2 = self.net2(tensor)
@@ -436,7 +428,9 @@ def saliency_metrics(heatmap: np.ndarray, mask640: np.ndarray) -> dict[str, floa
             else float("nan")
         ),
         "inside_polygon_mean": float(positive[mask640].mean()) if mask640.any() else float("nan"),
-        "outside_polygon_mean": float(positive[~mask640].mean()) if (~mask640).any() else float("nan"),
+        "outside_polygon_mean": float(positive[~mask640].mean())
+        if (~mask640).any()
+        else float("nan"),
     }
 
 
@@ -460,9 +454,7 @@ def occlusion_sensitivity(
     for y in positions:
         for x in positions:
             occluded = base640.copy()
-            occluded[y : y + window, x : x + window] = blurred[
-                y : y + window, x : x + window
-            ]
+            occluded[y : y + window, x : x + window] = blurred[y : y + window, x : x + window]
             variants.append(occluded)
             locations.append((x, y))
     predictions = models.predict_preprocessed(variants)
@@ -558,16 +550,10 @@ def inventory_objects(inventory_path: Path) -> list[dict]:
             raise FileNotFoundError(f"Inventory row {index} WSI does not exist")
         records = row["existing_records"]
         if not isinstance(records, list) or not records:
-            raise ValueError(
-                f"Inventory row {index} needs at least one reference crop record"
-            )
-        reference_paddings = sorted(
-            round(float(record["padding_ratio"]), 2) for record in records
-        )
+            raise ValueError(f"Inventory row {index} needs at least one reference crop record")
+        reference_paddings = sorted(round(float(record["padding_ratio"]), 2) for record in records)
         if reference_paddings != [0.10, 0.25]:
-            raise ValueError(
-                f"Inventory row {index} must contain the 10% and 25% reference crops"
-            )
+            raise ValueError(f"Inventory row {index} must contain the 10% and 25% reference crops")
         if any(not record.get("sha256") for record in records):
             raise ValueError(f"Inventory row {index} has a reference crop without SHA-256")
         objects.append(
@@ -609,9 +595,7 @@ def create_provenance(
             "occlusion_window_px": args.occlusion_window,
             "occlusion_stride_px": args.occlusion_stride,
             "counterfactual": "Gaussian-blurred removal with feathered polygon boundary",
-            "derived_probability_rule": (
-                "pE=pI/(pI+pM); pP=pM/(pI+pM)*qP; pS=pM/(pI+pM)*qS"
-            ),
+            "derived_probability_rule": ("pE=pI/(pI+pM); pP=pM/(pI+pM)*qP; pS=pM/(pI+pM)*qS"),
         },
         "inputs": {
             "object_inventory": {
@@ -840,9 +824,9 @@ def main() -> None:
                             "baseline_target_probability": baseline_cf["final"][
                                 baseline_cf["derived_top1"]
                             ],
-                            "baseline_target_probability_after_counterfactual": prediction[
-                                "final"
-                            ][baseline_cf["derived_top1"]],
+                            "baseline_target_probability_after_counterfactual": prediction["final"][
+                                baseline_cf["derived_top1"]
+                            ],
                             "baseline_target_probability_drop": baseline_cf["final"][
                                 baseline_cf["derived_top1"]
                             ]
@@ -860,14 +844,10 @@ def main() -> None:
             # Grad-CAM at 10% production padding, using exact JPEG95 pixels.
             base_rgb = encoded95[0.10]
             base_mask = crops[0.10][1]
-            display = np.uint8(
-                np.clip(models.preprocessed_rgb(base_rgb) * 255.0, 0, 255)
-            )
+            display = np.uint8(np.clip(models.preprocessed_rgb(base_rgb) * 255.0, 0, 255))
             mask640 = resize_mask(base_mask)
             baseline = models.predict_rows([base_rgb])[0]
-            step1_target = (
-                "Immature" if baseline["derived_top1"] == "E-TLS" else "Mature"
-            )
+            step1_target = "Immature" if baseline["derived_top1"] == "E-TLS" else "Mature"
             step2_target = max(baseline["step2"], key=baseline["step2"].get)
             cam1 = models.gradcam(base_rgb, 1, step1_target)
             cam2 = models.gradcam(base_rgb, 2, step2_target)

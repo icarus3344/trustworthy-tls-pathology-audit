@@ -84,14 +84,21 @@ def main() -> None:
 
     complete112 = slide_df[slide_df.s112_status == "success"]
     effect_col = "s112_mean_ring_0_250_fraction_LYM_paired_difference"
-    effects = complete112[effect_col].dropna().to_numpy(float) if effect_col in complete112 else np.array([])
+    effects = (
+        complete112[effect_col].dropna().to_numpy(float)
+        if effect_col in complete112
+        else np.array([])
+    )
     bootstrap = {}
     if len(effects) >= 2:
         rng = np.random.default_rng(20260728)
         means = np.mean(rng.choice(effects, size=(10000, len(effects)), replace=True), axis=1)
         bootstrap = {
             "slide_mean_effect": float(effects.mean()),
-            "cluster_bootstrap_95ci": [float(np.quantile(means, .025)), float(np.quantile(means, .975))],
+            "cluster_bootstrap_95ci": [
+                float(np.quantile(means, 0.025)),
+                float(np.quantile(means, 0.975)),
+            ],
             "positive_direction_slides": int((effects > 0).sum()),
             "nonzero_effect_slides": int(len(effects)),
         }
@@ -101,7 +108,9 @@ def main() -> None:
         "n_locked_slides": len(selected),
         "n_completed_primary_scale": int(len(complete112)),
         "n_zero_detection_slides": int((slide_df.total_tls.fillna(-1) == 0).sum()),
-        "n_tls_objects_primary_scale": int(len(object_df[object_df.scale_um == 112])) if len(object_df) else 0,
+        "n_tls_objects_primary_scale": int(len(object_df[object_df.scale_um == 112]))
+        if len(object_df)
+        else 0,
         "primary_effect": "112-um inner 0-250 LYM fraction minus mean of 3 within-slide controls",
         "primary_slide_level_summary": bootstrap,
     }

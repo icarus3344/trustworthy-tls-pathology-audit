@@ -14,8 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from PIL import Image, ImageDraw, ImageOps
-
+from PIL import Image, ImageDraw
 
 KEY = ["cohort", "sample_id", "object_id"]
 CLASSES = ["E-TLS", "P-TLS", "S-TLS"]
@@ -81,17 +80,14 @@ def padding_summary(padding: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     )
     comparison = padding.merge(base, on=KEY, validate="many_to_one")
     comparison["flip_vs_pad10"] = comparison["derived_top1"] != comparison["baseline_class"]
-    by_padding = (
-        comparison.groupby("padding", as_index=False)
-        .agg(
-            n_objects=("object_id", "size"),
-            flip_fraction=("flip_vs_pad10", "mean"),
-            mean_entropy=("entropy_normalized", "mean"),
-            mean_margin=("top1_margin", "mean"),
-            mean_pE=("p_E", "mean"),
-            mean_pP=("p_P", "mean"),
-            mean_pS=("p_S", "mean"),
-        )
+    by_padding = comparison.groupby("padding", as_index=False).agg(
+        n_objects=("object_id", "size"),
+        flip_fraction=("flip_vs_pad10", "mean"),
+        mean_entropy=("entropy_normalized", "mean"),
+        mean_margin=("top1_margin", "mean"),
+        mean_pE=("p_E", "mean"),
+        mean_pP=("p_P", "mean"),
+        mean_pS=("p_S", "mean"),
     )
     return objects, by_padding
 
@@ -109,20 +105,20 @@ def stain_summary(stain: pd.DataFrame) -> pd.DataFrame:
         columns={"p_E": "raw_p_E", "p_P": "raw_p_P", "p_S": "raw_p_S"}
     )
     stain = stain.merge(raw, on=KEY, validate="many_to_one")
-    stain["max_abs_probability_change"] = stain[
-        ["p_E", "p_P", "p_S"]
-    ].sub(stain[["raw_p_E", "raw_p_P", "raw_p_S"]].to_numpy()).abs().max(axis=1)
-    summary = (
-        stain.groupby("variant", as_index=False)
-        .agg(
-            n_objects=("object_id", "size"),
-            class_flip_fraction=("class_flip_vs_raw", "mean"),
-            production_flip_fraction=("production_flip_vs_raw", "mean"),
-            ps_flip_fraction=("ps_flip_vs_raw", "mean"),
-            mean_max_abs_probability_change=("max_abs_probability_change", "mean"),
-            median_entropy=("entropy_normalized", "median"),
-            median_margin=("top1_margin", "median"),
-        )
+    stain["max_abs_probability_change"] = (
+        stain[["p_E", "p_P", "p_S"]]
+        .sub(stain[["raw_p_E", "raw_p_P", "raw_p_S"]].to_numpy())
+        .abs()
+        .max(axis=1)
+    )
+    summary = stain.groupby("variant", as_index=False).agg(
+        n_objects=("object_id", "size"),
+        class_flip_fraction=("class_flip_vs_raw", "mean"),
+        production_flip_fraction=("production_flip_vs_raw", "mean"),
+        ps_flip_fraction=("ps_flip_vs_raw", "mean"),
+        mean_max_abs_probability_change=("max_abs_probability_change", "mean"),
+        median_entropy=("entropy_normalized", "median"),
+        median_margin=("top1_margin", "median"),
     )
     return summary
 
@@ -130,14 +126,11 @@ def stain_summary(stain: pd.DataFrame) -> pd.DataFrame:
 def counterfactual_summary(counter: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     counter = counter.copy()
     counter["class_flip_vs_original"] = bool_series(counter["class_flip_vs_original"])
-    summary = (
-        counter.groupby(["padding", "variant"], as_index=False)
-        .agg(
-            n_objects=("object_id", "size"),
-            class_flip_fraction=("class_flip_vs_original", "mean"),
-            mean_target_probability_drop=("baseline_target_probability_drop", "mean"),
-            median_target_probability_drop=("baseline_target_probability_drop", "median"),
-        )
+    summary = counter.groupby(["padding", "variant"], as_index=False).agg(
+        n_objects=("object_id", "size"),
+        class_flip_fraction=("class_flip_vs_original", "mean"),
+        mean_target_probability_drop=("baseline_target_probability_drop", "mean"),
+        median_target_probability_drop=("baseline_target_probability_drop", "median"),
     )
     pivot = counter.pivot_table(
         index=KEY + ["padding"],
@@ -169,21 +162,15 @@ def integrated_objects(
 ) -> pd.DataFrame:
     stain_nontrivial = stain.loc[stain["variant"] != "raw_rgb"].copy()
     stain_nontrivial["class_flip_vs_raw"] = bool_series(stain_nontrivial["class_flip_vs_raw"])
-    stain_obj = (
-        stain_nontrivial.groupby(KEY, as_index=False)
-        .agg(
-            any_stain_or_encoding_flip=("class_flip_vs_raw", "max"),
-            n_stain_or_encoding_flips=("class_flip_vs_raw", "sum"),
-        )
+    stain_obj = stain_nontrivial.groupby(KEY, as_index=False).agg(
+        any_stain_or_encoding_flip=("class_flip_vs_raw", "max"),
+        n_stain_or_encoding_flips=("class_flip_vs_raw", "sum"),
     )
-    counter_obj = (
-        counter_pivot.groupby(KEY, as_index=False)
-        .agg(
-            mean_tls_removal_drop=("baseline_target_probability_drop_context_only", "mean"),
-            mean_context_removal_drop=("baseline_target_probability_drop_tls_only", "mean"),
-            any_tls_removal_flip=("class_flip_vs_original_context_only", "max"),
-            any_context_removal_flip=("class_flip_vs_original_tls_only", "max"),
-        )
+    counter_obj = counter_pivot.groupby(KEY, as_index=False).agg(
+        mean_tls_removal_drop=("baseline_target_probability_drop_context_only", "mean"),
+        mean_context_removal_drop=("baseline_target_probability_drop_tls_only", "mean"),
+        any_tls_removal_flip=("class_flip_vs_original_context_only", "max"),
+        any_context_removal_flip=("class_flip_vs_original_tls_only", "max"),
     )
     cam = gradcam.pivot_table(
         index=KEY,
@@ -234,9 +221,7 @@ def integrated_objects(
     return result
 
 
-def plot_padding(
-    padding: pd.DataFrame, by_padding: pd.DataFrame, output: Path
-) -> None:
+def plot_padding(padding: pd.DataFrame, by_padding: pd.DataFrame, output: Path) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
     x = by_padding["padding"] * 100
     for cls, column in zip(CLASSES, ["mean_pE", "mean_pP", "mean_pS"]):
@@ -248,7 +233,9 @@ def plot_padding(
     axes[0, 0].legend()
 
     class_counts = (
-        padding.groupby(["padding", "derived_top1"]).size().unstack(fill_value=0)
+        padding.groupby(["padding", "derived_top1"])
+        .size()
+        .unstack(fill_value=0)
         .reindex(columns=CLASSES, fill_value=0)
     )
     proportions = class_counts.div(class_counts.sum(axis=1), axis=0)
@@ -305,7 +292,9 @@ def plot_stain(summary: pd.DataFrame, output: Path) -> None:
     pos = np.arange(len(x))
     axes[0].bar(pos - 0.18, x["class_flip_fraction"], 0.36, label="Any E/P/S flip")
     axes[0].bar(pos + 0.18, x["ps_flip_fraction"], 0.36, label="P↔S flip")
-    axes[0].set_ylim(0, max(0.05, float(x[["class_flip_fraction", "ps_flip_fraction"]].max().max()) * 1.25))
+    axes[0].set_ylim(
+        0, max(0.05, float(x[["class_flip_fraction", "ps_flip_fraction"]].max().max()) * 1.25)
+    )
     axes[0].set_xticks(pos, x["variant"], rotation=35, ha="right")
     axes[0].set_ylabel("Object fraction")
     axes[0].set_title("Class-flip sensitivity relative to raw RGB")
@@ -333,7 +322,10 @@ def plot_counterfactual(
         ].set_index("variant")
         axes[0, i].bar(
             ["Context removed\n(TLS-only)", "TLS removed\n(context-only)"],
-            [subset.loc["tls_only", "class_flip_fraction"], subset.loc["context_only", "class_flip_fraction"]],
+            [
+                subset.loc["tls_only", "class_flip_fraction"],
+                subset.loc["context_only", "class_flip_fraction"],
+            ],
             color=["#F28E2B", "#4C78A8"],
         )
         axes[0, i].set_ylim(0, 1)
@@ -359,8 +351,12 @@ def plot_counterfactual(
     axes[1, 0].set_ylabel("Target-probability drop when TLS is removed")
     axes[1, 0].set_title("TLS morphology versus context dependence")
 
-    counts = pivot["attribution_tendency"].value_counts().reindex(
-        ["TLS_morphology_dominant", "context_dominant", "mixed_or_small_effect"], fill_value=0
+    counts = (
+        pivot["attribution_tendency"]
+        .value_counts()
+        .reindex(
+            ["TLS_morphology_dominant", "context_dominant", "mixed_or_small_effect"], fill_value=0
+        )
     )
     axes[1, 1].barh(
         ["TLS morphology dominant", "Context dominant", "Mixed/small effect"],
@@ -377,7 +373,9 @@ def plot_counterfactual(
     plt.close(fig)
 
 
-def plot_saliency(gradcam: pd.DataFrame, occlusion: pd.DataFrame, objects: pd.DataFrame, output: Path) -> None:
+def plot_saliency(
+    gradcam: pd.DataFrame, occlusion: pd.DataFrame, objects: pd.DataFrame, output: Path
+) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(12, 9), constrained_layout=True)
     gradcam.boxplot(
         column="inside_polygon_enrichment",
@@ -413,8 +411,10 @@ def plot_saliency(gradcam: pd.DataFrame, occlusion: pd.DataFrame, objects: pd.Da
     axes[1, 0].set_ylabel("Occlusion enrichment")
     axes[1, 0].set_title("Agreement of two attribution methods")
 
-    priorities = objects["engineering_review_priority"].value_counts().reindex(
-        ["low", "medium", "high"], fill_value=0
+    priorities = (
+        objects["engineering_review_priority"]
+        .value_counts()
+        .reindex(["low", "medium", "high"], fill_value=0)
     )
     axes[1, 1].bar(priorities.index, priorities.values, color=["#59A14F", "#F2CF5B", "#E15759"])
     axes[1, 1].set_ylabel("Objects")
@@ -528,8 +528,8 @@ def markdown_assessment(
         "",
         "## Multiscale padding",
         "",
-        f"- Stable from 0% through 40%: {stable}/{n} ({stable/n:.1%}).",
-        f"- At least one class transition: {n-stable}/{n} ({1-stable/n:.1%}).",
+        f"- Stable from 0% through 40%: {stable}/{n} ({stable / n:.1%}).",
+        f"- At least one class transition: {n - stable}/{n} ({1 - stable / n:.1%}).",
         f"- Median minimum top-1 margin: {padding_objects.padding_min_margin.median():.3f}.",
         f"- Median maximum normalized entropy: {padding_objects.padding_max_entropy.median():.3f}.",
         "",
@@ -561,7 +561,9 @@ def markdown_assessment(
         "",
     ]
     for padding in [0.10, 0.25]:
-        frame = counter_summary.loc[np.isclose(counter_summary.padding, padding)].set_index("variant")
+        frame = counter_summary.loc[np.isclose(counter_summary.padding, padding)].set_index(
+            "variant"
+        )
         lines.append(
             f"- Padding {padding:.0%}: context removal (TLS-only) flipped "
             f"{frame.loc['tls_only', 'class_flip_fraction']:.1%}; TLS removal "
@@ -661,9 +663,7 @@ def main() -> None:
     padding_objects, by_padding = padding_summary(padding)
     stain_summary_df = stain_summary(stain)
     counter_summary_df, counter_pivot = counterfactual_summary(counter)
-    objects = integrated_objects(
-        padding_objects, stain, counter_pivot, gradcam, occlusion
-    )
+    objects = integrated_objects(padding_objects, stain, counter_pivot, gradcam, occlusion)
     padding_objects.to_csv(args.output / "padding_object_summary.tsv", sep="\t", index=False)
     by_padding.to_csv(args.output / "padding_level_summary.tsv", sep="\t", index=False)
     stain_summary_df.to_csv(args.output / "stain_encoding_summary.tsv", sep="\t", index=False)

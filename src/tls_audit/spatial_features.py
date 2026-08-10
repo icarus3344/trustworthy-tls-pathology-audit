@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import hashlib
 import json
 import math
 from collections import defaultdict
@@ -14,7 +13,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import ndimage
-from skimage.measure import label as sk_label, regionprops
+from skimage.measure import label as sk_label
+from skimage.measure import regionprops
 from skimage.morphology import disk, erosion
 from skimage.util import view_as_blocks
 
@@ -50,10 +50,12 @@ def polygon_center_um(
     if abs(cross_sum) < 1e-12:
         center = xy.mean(axis=0)
     else:
-        center = np.asarray([
-            ((x + np.roll(x, -1)) * cross).sum() / (3.0 * cross_sum),
-            ((y + np.roll(y, -1)) * cross).sum() / (3.0 * cross_sum),
-        ])
+        center = np.asarray(
+            [
+                ((x + np.roll(x, -1)) * cross).sum() / (3.0 * cross_sum),
+                ((y + np.roll(y, -1)) * cross).sum() / (3.0 * cross_sum),
+            ]
+        )
     return float(center[0] * mpp), float(center[1] * mpp)
 
 
@@ -65,7 +67,9 @@ def entropy_from_counts(counts: np.ndarray) -> float:
     return float(-(p * np.log(p)).sum())
 
 
-def build_label_grid(tiles: pd.DataFrame, threshold: float, tile_um: float) -> tuple[np.ndarray, np.ndarray]:
+def build_label_grid(
+    tiles: pd.DataFrame, threshold: float, tile_um: float
+) -> tuple[np.ndarray, np.ndarray]:
     gx = np.rint((tiles.center_x_um.to_numpy() - tile_um / 2) / tile_um).astype(int)
     gy = np.rint((tiles.center_y_um.to_numpy() - tile_um / 2) / tile_um).astype(int)
     if gx.min() < 0 or gy.min() < 0:
@@ -86,7 +90,9 @@ def build_probability_grid(tiles: pd.DataFrame, tile_um: float) -> np.ndarray:
 
 
 def components_for_class(subgrid: np.ndarray, class_name: str) -> tuple[np.ndarray, int, list[int]]:
-    labels, n = ndimage.label(subgrid == CLASSES.index(class_name), structure=np.array([[0,1,0],[1,1,1],[0,1,0]]))
+    labels, n = ndimage.label(
+        subgrid == CLASSES.index(class_name), structure=np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+    )
     sizes = np.bincount(labels.ravel())[1:].astype(int).tolist() if n else []
     return labels, int(n), sizes
 
@@ -176,7 +182,7 @@ def official_region_centroids(
     for region in regionprops(labelled):
         if region.area > area_thresh:
             minr, minc, maxr, maxc = region.bbox
-            region_label = (labelled[minr:maxr, minc:maxc] == region.label)
+            region_label = labelled[minr:maxr, minc:maxc] == region.label
             h, w = region_label.shape
             pad_h = (block_size - h % block_size) % block_size
             pad_w = (block_size - w % block_size) % block_size
@@ -186,17 +192,21 @@ def official_region_centroids(
                 for j in range(blocks.shape[1]):
                     if blocks[i, j].mean() > 0.5:
                         # Upstream stores node pos as (x, y).
-                        nodes.append((
-                            float(minc + j * block_size + block_size // 2),
-                            float(minr + i * block_size + block_size // 2),
-                        ))
+                        nodes.append(
+                            (
+                                float(minc + j * block_size + block_size // 2),
+                                float(minr + i * block_size + block_size // 2),
+                            )
+                        )
         else:
             cy, cx = region.centroid
             nodes.append((float(cx), float(cy)))
     return np.asarray(nodes, dtype=float).reshape(-1, 2)
 
 
-def centroid_pair_features(subgrid: np.ndarray, a: str, b: str, threshold_cells: float = 20.0) -> dict:
+def centroid_pair_features(
+    subgrid: np.ndarray, a: str, b: str, threshold_cells: float = 20.0
+) -> dict:
     ca, cb = official_region_centroids(subgrid, a), official_region_centroids(subgrid, b)
     if len(ca) and len(cb):
         dist = np.sqrt(((ca[:, None] - cb[None, :]) ** 2).sum(2))
@@ -220,14 +230,16 @@ def centroid_pair_features(subgrid: np.ndarray, a: str, b: str, threshold_cells:
     }
 
 
-def extract_window(grid: np.ndarray, cx_um: float, cy_um: float, radius_um: float, tile_um: float) -> tuple[np.ndarray, tuple[float, float]]:
-    cx, cy = cx_um / tile_um - .5, cy_um / tile_um - .5
+def extract_window(
+    grid: np.ndarray, cx_um: float, cy_um: float, radius_um: float, tile_um: float
+) -> tuple[np.ndarray, tuple[float, float]]:
+    cx, cy = cx_um / tile_um - 0.5, cy_um / tile_um - 0.5
     r = radius_um / tile_um
-    x0, x1 = max(0, int(math.floor(cx-r))), min(grid.shape[1], int(math.ceil(cx+r))+1)
-    y0, y1 = max(0, int(math.floor(cy-r))), min(grid.shape[0], int(math.ceil(cy+r))+1)
+    x0, x1 = max(0, int(math.floor(cx - r))), min(grid.shape[1], int(math.ceil(cx + r)) + 1)
+    y0, y1 = max(0, int(math.floor(cy - r))), min(grid.shape[0], int(math.ceil(cy + r)) + 1)
     sub = grid[y0:y1, x0:x1].copy()
     yy, xx = np.mgrid[y0:y1, x0:x1]
-    circle = (xx - cx) ** 2 + (yy - cy) ** 2 <= r ** 2
+    circle = (xx - cx) ** 2 + (yy - cy) ** 2 <= r**2
     sub[~circle] = -1
     return sub, (cx - x0, cy - y0)
 
@@ -249,15 +261,17 @@ def window_features(
         out[f"fraction_{c}"] = float(n / len(nonback)) if len(nonback) else float("nan")
     out["semantic_entropy"] = entropy_from_counts(counts)
     if probability_grid is not None:
-        cx, cy = cx_um / tile_um - .5, cy_um / tile_um - .5
+        cx, cy = cx_um / tile_um - 0.5, cy_um / tile_um - 0.5
         r = radius_um / tile_um
-        x0, x1 = max(0, int(math.floor(cx-r))), min(grid.shape[1], int(math.ceil(cx+r))+1)
-        y0, y1 = max(0, int(math.floor(cy-r))), min(grid.shape[0], int(math.ceil(cy+r))+1)
+        x0, x1 = max(0, int(math.floor(cx - r))), min(grid.shape[1], int(math.ceil(cx + r)) + 1)
+        y0, y1 = max(0, int(math.floor(cy - r))), min(grid.shape[0], int(math.ceil(cy + r)) + 1)
         psub = probability_grid[y0:y1, x0:x1]
         pkeep = (sub >= 0) & (sub != CLASSES.index("BACK")) & np.isfinite(psub[..., 0])
         for i, c in enumerate(CLASSES):
-            out[f"mean_probability_{c}"] = float(psub[..., i][pkeep].mean()) if pkeep.any() else float("nan")
-    yy, xx = np.mgrid[:sub.shape[0], :sub.shape[1]]
+            out[f"mean_probability_{c}"] = (
+                float(psub[..., i][pkeep].mean()) if pkeep.any() else float("nan")
+            )
+    yy, xx = np.mgrid[: sub.shape[0], : sub.shape[1]]
     dist_um = np.hypot(xx - local_cx, yy - local_cy) * tile_um
     if radius_um >= 1000:
         for inner, outer in [(0, 250), (250, 500), (500, 1000)]:
@@ -265,7 +279,9 @@ def window_features(
             ring_nonback = ring_vals[(ring_vals >= 0) & (ring_vals != CLASSES.index("BACK"))]
             for c in NON_BACK:
                 out[f"ring_{inner}_{outer}_fraction_{c}"] = (
-                    float(np.mean(ring_nonback == CLASSES.index(c))) if len(ring_nonback) else float("nan")
+                    float(np.mean(ring_nonback == CLASSES.index(c)))
+                    if len(ring_nonback)
+                    else float("nan")
                 )
     for c in ["LYM", "STR", "TUM"]:
         _, n, sizes = components_for_class(sub, c)
@@ -273,9 +289,7 @@ def window_features(
         out[f"largest_component_tiles_{c}"] = max(sizes, default=0)
         ys, xs = np.where(sub == CLASSES.index(c))
         if len(xs):
-            out[f"nearest_{c}_um"] = float(
-                np.min(np.hypot(xs - local_cx, ys - local_cy)) * tile_um
-            )
+            out[f"nearest_{c}_um"] = float(np.min(np.hypot(xs - local_cx, ys - local_cy)) * tile_um)
         else:
             out[f"nearest_{c}_um"] = float(radius_um)
     out.update(boundary_pair_features(sub, "LYM", "TUM", tile_um))
@@ -304,6 +318,7 @@ def render_locations(
 ) -> None:
     import openslide
     from PIL import ImageDraw
+
     slide = openslide.OpenSlide(str(wsi_path))
     thumb = slide.get_thumbnail((1800, 1800)).convert("RGB")
     sx, sy = thumb.width / slide.dimensions[0], thumb.height / slide.dimensions[1]
@@ -312,18 +327,27 @@ def render_locations(
         x = row.center_x_um / wsi_mpp * sx
         y = row.center_y_um / wsi_mpp * sy
         rx, ry = radius_um / wsi_mpp * sx, radius_um / wsi_mpp * sy
-        draw.ellipse((x-rx, y-ry, x+rx, y+ry), outline=(255, 0, 0), width=3)
-        draw.ellipse((x-5, y-5, x+5, y+5), fill=(255, 0, 0))
-        draw.text((x+6, y+2), f"TLS {row.object_id}", fill=(0, 0, 0), stroke_width=2, stroke_fill="white")
+        draw.ellipse((x - rx, y - ry, x + rx, y + ry), outline=(255, 0, 0), width=3)
+        draw.ellipse((x - 5, y - 5, x + 5, y + 5), fill=(255, 0, 0))
+        draw.text(
+            (x + 6, y + 2),
+            f"TLS {row.object_id}",
+            fill=(0, 0, 0),
+            stroke_width=2,
+            stroke_fill="white",
+        )
     for c in controls:
         x = c["center_x_um"] / wsi_mpp * sx
         y = c["center_y_um"] / wsi_mpp * sy
         rx, ry = radius_um / wsi_mpp * sx, radius_um / wsi_mpp * sy
-        draw.ellipse((x-rx, y-ry, x+rx, y+ry), outline=(0, 220, 255), width=3)
-        draw.rectangle((x-5, y-5, x+5, y+5), fill=(0, 220, 255))
+        draw.ellipse((x - rx, y - ry, x + rx, y + ry), outline=(0, 220, 255), width=3)
+        draw.rectangle((x - 5, y - 5, x + 5, y + 5), fill=(0, 220, 255))
         draw.text(
-            (x+6, y+2), f"C {c['object_id']}.{c.get('control_id', 1)}",
-            fill=(0, 0, 0), stroke_width=2, stroke_fill="white",
+            (x + 6, y + 2),
+            f"C {c['object_id']}.{c.get('control_id', 1)}",
+            fill=(0, 0, 0),
+            stroke_width=2,
+            stroke_fill="white",
         )
     thumb.save(output)
     slide.close()
@@ -340,10 +364,13 @@ def select_controls(
     ys, xs = np.where((grid >= 0) & (grid != CLASSES.index("BACK")))
     step_cells = max(1, int(round(radius_um / tile_um)))
     keep = (xs % step_cells == 0) & (ys % step_cells == 0)
-    candidates = np.c_[(xs[keep] + .5) * tile_um, (ys[keep] + .5) * tile_um]
+    candidates = np.c_[(xs[keep] + 0.5) * tile_um, (ys[keep] + 0.5) * tile_um]
     tls_xy = tls[["center_x_um", "center_y_um"]].to_numpy(float)
     if len(candidates):
-        far = np.min(np.sqrt(((candidates[:, None] - tls_xy[None, :]) ** 2).sum(2)), axis=1) >= exclusion_um
+        far = (
+            np.min(np.sqrt(((candidates[:, None] - tls_xy[None, :]) ** 2).sum(2)), axis=1)
+            >= exclusion_um
+        )
         candidates = candidates[far]
     if not len(candidates):
         raise ValueError("No eligible matched-control candidates")
@@ -354,21 +381,28 @@ def select_controls(
     used: set[int] = set()
     controls = []
     for _, row in tls.iterrows():
-        tv = np.nan_to_num(broad_vector(grid, row.center_x_um, row.center_y_um, radius_um * 1.5, tile_um), nan=0.0)
+        tv = np.nan_to_num(
+            broad_vector(grid, row.center_x_um, row.center_y_um, radius_um * 1.5, tile_um), nan=0.0
+        )
         d = np.sqrt((((cv - tv) / scale) ** 2).sum(1))
         order = np.argsort(d)
         for control_id in range(1, controls_per_tls + 1):
-            idx = next((int(i) for i in order if int(i) not in used), int(order[(control_id - 1) % len(order)]))
+            idx = next(
+                (int(i) for i in order if int(i) not in used),
+                int(order[(control_id - 1) % len(order)]),
+            )
             reused = idx in used
             used.add(idx)
-            controls.append({
-                "object_id": str(row.object_id),
-                "control_id": control_id,
-                "center_x_um": float(candidates[idx, 0]),
-                "center_y_um": float(candidates[idx, 1]),
-                "match_distance": float(d[idx]),
-                "control_reused": reused,
-            })
+            controls.append(
+                {
+                    "object_id": str(row.object_id),
+                    "control_id": control_id,
+                    "center_x_um": float(candidates[idx, 0]),
+                    "center_y_um": float(candidates[idx, 1]),
+                    "match_distance": float(d[idx]),
+                    "control_reused": reused,
+                }
+            )
     return controls
 
 
@@ -399,21 +433,35 @@ def main() -> None:
     tiles = pd.read_csv(a.tile_predictions, sep="\t")
     tls = pd.read_csv(a.tls_predictions, sep="\t")
     if len(tls) == 0:
-        pd.DataFrame(columns=[
-            "sample_id", "object_id", "location_type", "control_id",
-            "center_x_um", "center_y_um", "radius_um", "semantic_threshold",
-        ]).to_csv(out_tsv, sep="\t", index=False)
+        pd.DataFrame(
+            columns=[
+                "sample_id",
+                "object_id",
+                "location_type",
+                "control_id",
+                "center_x_um",
+                "center_y_um",
+                "radius_um",
+                "semantic_threshold",
+            ]
+        ).to_csv(out_tsv, sep="\t", index=False)
         pd.DataFrame(columns=["object_id"]).to_csv(
             a.output_dir / "primary_paired_differences.tsv", sep="\t", index=False
         )
-        (a.output_dir / "pilot_summary.json").write_text(json.dumps({
-            "status": "success",
-            "analysis_label": "zero-detection slide retained in validation cohort",
-            "n_tls_objects": 0,
-            "zero_detection": True,
-            "controls_per_tls": a.controls_per_tls,
-            "tls_center_method": a.tls_center_method,
-        }, indent=2) + "\n")
+        (a.output_dir / "pilot_summary.json").write_text(
+            json.dumps(
+                {
+                    "status": "success",
+                    "analysis_label": "zero-detection slide retained in validation cohort",
+                    "n_tls_objects": 0,
+                    "zero_detection": True,
+                    "controls_per_tls": a.controls_per_tls,
+                    "tls_center_method": a.tls_center_method,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
         print(json.dumps({"status": "success", "objects": 0, "zero_detection": True}))
         return
     for col in ["object_id", "polygon_coordinates", "context_stable", "consensus_class"]:
@@ -434,7 +482,11 @@ def main() -> None:
     for threshold in thresholds:
         grid, _ = build_label_grid(tiles, threshold, a.tile_um)
         controls = select_controls(
-            grid, tls, a.tile_um, radius_um=1000, exclusion_um=1500,
+            grid,
+            tls,
+            a.tile_um,
+            radius_um=1000,
+            exclusion_um=1500,
             controls_per_tls=a.controls_per_tls,
         )
         if threshold == 0:
@@ -447,29 +499,38 @@ def main() -> None:
             locations = [
                 ("TLS", 0, float(row.center_x_um), float(row.center_y_um), float("nan")),
             ]
-            locations.extend([
-                ("matched_control", int(control["control_id"]), control["center_x_um"],
-                 control["center_y_um"], control["match_distance"])
-                for control in controls_by_id[str(row.object_id)]
-            ])
+            locations.extend(
+                [
+                    (
+                        "matched_control",
+                        int(control["control_id"]),
+                        control["center_x_um"],
+                        control["center_y_um"],
+                        control["match_distance"],
+                    )
+                    for control in controls_by_id[str(row.object_id)]
+                ]
+            )
             for location_type, control_id, x, y, match_distance in locations:
                 for radius in radii:
                     feat = window_features(grid, x, y, radius, a.tile_um, prob_grid)
-                    records.append({
-                        "sample_id": row.sample_id,
-                        "object_id": row.object_id,
-                        "location_type": location_type,
-                        "control_id": control_id,
-                        "center_x_um": x,
-                        "center_y_um": y,
-                        "radius_um": radius,
-                        "semantic_threshold": threshold,
-                        "match_distance": match_distance,
-                        "tls_center_method": a.tls_center_method,
-                        "context_stable": bool(row.context_stable),
-                        "consensus_class": row.consensus_class,
-                        **{k: v for k, v in feat.items() if not k.endswith("_ids")},
-                    })
+                    records.append(
+                        {
+                            "sample_id": row.sample_id,
+                            "object_id": row.object_id,
+                            "location_type": location_type,
+                            "control_id": control_id,
+                            "center_x_um": x,
+                            "center_y_um": y,
+                            "radius_um": radius,
+                            "semantic_threshold": threshold,
+                            "match_distance": match_distance,
+                            "tls_center_method": a.tls_center_method,
+                            "context_stable": bool(row.context_stable),
+                            "consensus_class": row.consensus_class,
+                            **{k: v for k, v in feat.items() if not k.endswith("_ids")},
+                        }
+                    )
     result = pd.DataFrame(records)
     result.to_csv(out_tsv, sep="\t", index=False)
     primary = result[(result.radius_um == 1000) & (result.semantic_threshold == 0)]
@@ -478,12 +539,20 @@ def main() -> None:
     tum_proximity_key = f"lym_tum_proximity_pair_count_{proximity_um}um"
     str_proximity_key = f"lym_str_proximity_pair_count_{proximity_um}um"
     numeric_features = [
-        "fraction_LYM", "mean_probability_LYM", "fraction_STR", "fraction_TUM",
-        "component_count_LYM", "lym_tum_contact_pair_count",
-        "lym_str_contact_pair_count", "lym_tum_interface_um",
-        "lym_str_interface_um", "lym_bridge_component_count",
-        tum_proximity_key, str_proximity_key,
-        "ring_0_250_fraction_LYM", "ring_0_250_fraction_TUM",
+        "fraction_LYM",
+        "mean_probability_LYM",
+        "fraction_STR",
+        "fraction_TUM",
+        "component_count_LYM",
+        "lym_tum_contact_pair_count",
+        "lym_str_contact_pair_count",
+        "lym_tum_interface_um",
+        "lym_str_interface_um",
+        "lym_bridge_component_count",
+        tum_proximity_key,
+        str_proximity_key,
+        "ring_0_250_fraction_LYM",
+        "ring_0_250_fraction_TUM",
         "ring_0_250_fraction_STR",
     ]
     for obj in sorted(primary.object_id.astype(str).unique()):
@@ -515,12 +584,15 @@ def main() -> None:
         "matched_controls": control_manifest,
         "primary_median_paired_differences": {
             f: float(paired_df[f"{f}_paired_difference"].median()) for f in numeric_features
-        } if len(paired_df) else {},
+        }
+        if len(paired_df)
+        else {},
     }
     tls_inner = primary[primary.location_type == "TLS"]["ring_0_250_fraction_LYM"]
     control_inner = (
         primary[primary.location_type == "matched_control"]
-        .groupby("object_id")["ring_0_250_fraction_LYM"].mean()
+        .groupby("object_id")["ring_0_250_fraction_LYM"]
+        .mean()
     )
     summary["primary_inner_250um_lym"] = {
         "tls_positive_count": int((tls_inner.fillna(0) > 0).sum()),
@@ -538,12 +610,18 @@ def main() -> None:
             "median_fraction_LYM": float(group.fraction_LYM.median()),
             "median_fraction_TUM": float(group.fraction_TUM.median()),
             "median_fraction_STR": float(group.fraction_STR.median()),
-            f"median_lym_tum_proximity_pairs_{proximity_um}um": float(group[tum_proximity_key].median()),
-            f"median_lym_str_proximity_pairs_{proximity_um}um": float(group[str_proximity_key].median()),
+            f"median_lym_tum_proximity_pairs_{proximity_um}um": float(
+                group[tum_proximity_key].median()
+            ),
+            f"median_lym_str_proximity_pairs_{proximity_um}um": float(
+                group[str_proximity_key].median()
+            ),
         }
     (a.output_dir / "pilot_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     if a.wsi and primary_controls is not None:
-        render_locations(a.wsi, a.wsi_mpp, tls, primary_controls, a.output_dir / "tls_control_overlay.png")
+        render_locations(
+            a.wsi, a.wsi_mpp, tls, primary_controls, a.output_dir / "tls_control_overlay.png"
+        )
     print(json.dumps({"status": "success", "rows": len(result), "objects": len(tls)}))
 
 

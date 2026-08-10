@@ -31,9 +31,7 @@ def main() -> None:
 
     summary = json.loads(args.summary.read_text(encoding="utf-8"))
     expected_n = summary["pathprism_cross_model_consistency"]["detected_slides_total"]
-    expected_mean = summary["pathprism_cross_model_consistency"][
-        "mean_of_slide_mean_paired_deltas"
-    ]
+    expected_mean = summary["pathprism_cross_model_consistency"]["mean_of_slide_mean_paired_deltas"]
     observed_mean = sum(values) / len(values)
 
     if len(values) != expected_n:

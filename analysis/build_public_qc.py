@@ -18,10 +18,10 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, Polygon, Rectangle
 import numpy as np
 import pandas as pd
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from matplotlib.patches import Circle, Polygon, Rectangle
+from PIL import Image
 
 try:
     import openslide
@@ -149,7 +149,10 @@ def read_local_wsi(
 ) -> tuple[Image.Image, float, float, float]:
     mpp = float(slide.properties.get("openslide.mpp-x", "0.5"))
     desired_downsample = target_mpp / mpp
-    level = min(range(slide.level_count), key=lambda i: abs(math.log(slide.level_downsamples[i] / desired_downsample)))
+    level = min(
+        range(slide.level_count),
+        key=lambda i: abs(math.log(slide.level_downsamples[i] / desired_downsample)),
+    )
     ds = float(slide.level_downsamples[level])
     actual_mpp = mpp * ds
     x0_um, y0_um = center_um[0] - half_um, center_um[1] - half_um
@@ -183,7 +186,7 @@ def object_panel(
         origin = meta["crop_origin"]
         local = np.asarray(points, dtype=float) - np.asarray(origin, dtype=float)
         ax.add_patch(Polygon(local, fill=False, edgecolor="#E15759", linewidth=2))
-        ax.set_title(f"{int(pad * 100)}% context: {pred[f'pad{int(pad*100):02d}_class']}")
+        ax.set_title(f"{int(pad * 100)}% context: {pred[f'pad{int(pad * 100):02d}_class']}")
         ax.axis("off")
 
     local_im, x0_um, y0_um, actual_mpp = read_local_wsi(wsi, (cx, cy))
@@ -229,8 +232,7 @@ def object_panel(
     ax.set_xlim(0, local_im.width)
     ax.set_ylim(local_im.height, 0)
     ax.set_title(
-        f"112 µm local map | ΔLYM250={row.s112_inner_diff:+.3f}\n"
-        f"ΔpLYM={row.s112_plym_diff:+.3f}"
+        f"112 µm local map | ΔLYM250={row.s112_inner_diff:+.3f}\nΔpLYM={row.s112_plym_diff:+.3f}"
     )
     ax.axis("off")
     fig.suptitle(
@@ -271,7 +273,12 @@ def main_result_figure(slides: pd.DataFrame, objects: pd.DataFrame, outdir: Path
     ax = axes[0, 0]
     bottom = np.zeros(len(slides))
     for cls, col in MATURITY_COLORS.items():
-        column = {"E-TLS": "E_TLS", "P-TLS": "P_TLS", "S-TLS": "S_TLS", "uncertain": "uncertain_TLS"}[cls]
+        column = {
+            "E-TLS": "E_TLS",
+            "P-TLS": "P_TLS",
+            "S-TLS": "S_TLS",
+            "uncertain": "uncertain_TLS",
+        }[cls]
         vals = slides[column].to_numpy(float)
         ax.bar(short, vals, bottom=bottom, color=col, label=cls)
         bottom += vals
@@ -296,12 +303,25 @@ def main_result_figure(slides: pd.DataFrame, objects: pd.DataFrame, outdir: Path
                 alpha=0.35,
                 linewidth=0.8,
             )
-            ax.scatter(x0 + jitter, r.ring_0_250_fraction_LYM_control_mean, facecolor="white", edgecolor=slide_color[sample], s=22)
+            ax.scatter(
+                x0 + jitter,
+                r.ring_0_250_fraction_LYM_control_mean,
+                facecolor="white",
+                edgecolor=slide_color[sample],
+                s=22,
+            )
             ax.scatter(x1 + jitter, r.ring_0_250_fraction_LYM_TLS, color=slide_color[sample], s=22)
     ax.set_xticks(np.arange(len(pos)), [s.replace("TCGA-", "") for s in pos.sample_id], rotation=30)
     ax.set_ylabel("LYM fraction, 0–250 µm")
     ax.set_title("Object-level matched comparison (112 µm)")
-    ax.text(0.02, 0.98, "open: mean of 3 controls  •  filled: TLS", transform=ax.transAxes, va="top", fontsize=9)
+    ax.text(
+        0.02,
+        0.98,
+        "open: mean of 3 controls  •  filled: TLS",
+        transform=ax.transAxes,
+        va="top",
+        fontsize=9,
+    )
     add_panel_label(ax, "B")
 
     ax = axes[1, 0]
@@ -324,7 +344,9 @@ def main_result_figure(slides: pd.DataFrame, objects: pd.DataFrame, outdir: Path
         g = obj112[obj112.sample_id == sample]
         vals = g.mean_probability_LYM_paired_difference.to_numpy(float)
         jitter = rng.uniform(-0.10, 0.10, size=len(vals))
-        ax.scatter(np.full(len(vals), i) + jitter, vals, color=slide_color[sample], alpha=0.75, s=28)
+        ax.scatter(
+            np.full(len(vals), i) + jitter, vals, color=slide_color[sample], alpha=0.75, s=28
+        )
         ax.scatter(i, vals.mean(), color="black", marker="_", s=250, linewidth=2)
     ax.axhline(0, color="#777777", linewidth=0.8)
     ax.set_xticks(np.arange(len(pos)), [s.replace("TCGA-", "") for s in pos.sample_id], rotation=30)
@@ -353,7 +375,10 @@ def radial_figure(
     records = []
     for sample in positive_samples:
         path = (
-            pp_root / "reproduction/outputs" / pp_analysis_name / sample
+            pp_root
+            / "reproduction/outputs"
+            / pp_analysis_name
+            / sample
             / "scale_112um/tls_tissue_graph/tls_control_features.tsv"
         )
         d = pd.read_csv(path, sep="\t")
@@ -379,15 +404,28 @@ def radial_figure(
     order = [x[0] for x in rings]
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.8))
     for sample, color in zip(positive_samples, SLIDE_COLORS):
-        g = radial[radial.sample_id == sample].groupby("ring", as_index=False).mean(numeric_only=True)
+        g = (
+            radial[radial.sample_id == sample]
+            .groupby("ring", as_index=False)
+            .mean(numeric_only=True)
+        )
         g["ring"] = pd.Categorical(g.ring, categories=order, ordered=True)
         g = g.sort_values("ring")
         axes[0].plot(order, g.tls, "-o", color=color, label=sample.replace("TCGA-", ""))
         axes[0].plot(order, g.control_mean, "--o", color=color, alpha=0.55)
-        axes[1].plot(order, g.paired_difference, "-o", color=color, label=sample.replace("TCGA-", ""))
+        axes[1].plot(
+            order, g.paired_difference, "-o", color=color, label=sample.replace("TCGA-", "")
+        )
     axes[0].set_title("Slide mean radial LYM fraction")
     axes[0].set_ylabel("LYM fraction")
-    axes[0].text(0.02, 0.98, "solid: TLS  •  dashed: matched controls", transform=axes[0].transAxes, va="top", fontsize=9)
+    axes[0].text(
+        0.02,
+        0.98,
+        "solid: TLS  •  dashed: matched controls",
+        transform=axes[0].transAxes,
+        va="top",
+        fontsize=9,
+    )
     axes[1].set_title("TLS − matched control")
     axes[1].axhline(0, color="#777777", linewidth=0.8)
     axes[1].set_ylabel("Paired difference")
@@ -428,8 +466,20 @@ def qc_figure(slides: pd.DataFrame, qc: pd.DataFrame, outdir: Path) -> None:
 
     ax = axes[2]
     stable = qc.context_stable.astype(bool)
-    ax.scatter(qc.s112_inner_diff[stable], qc.s256_inner_diff[stable], color="#4C78A8", label="stable", alpha=0.8)
-    ax.scatter(qc.s112_inner_diff[~stable], qc.s256_inner_diff[~stable], color="#E15759", marker="x", label="uncertain")
+    ax.scatter(
+        qc.s112_inner_diff[stable],
+        qc.s256_inner_diff[stable],
+        color="#4C78A8",
+        label="stable",
+        alpha=0.8,
+    )
+    ax.scatter(
+        qc.s112_inner_diff[~stable],
+        qc.s256_inner_diff[~stable],
+        color="#E15759",
+        marker="x",
+        label="uncertain",
+    )
     lim = max(abs(qc.s112_inner_diff).max(), abs(qc.s256_inner_diff).max(), 0.1) * 1.05
     ax.plot([-lim, lim], [-lim, lim], color="#777777", linewidth=0.8)
     ax.axhline(0, color="#BBBBBB", linewidth=0.6)
@@ -499,11 +549,15 @@ def main() -> None:
         preds["object_id"] = preds.object_id.astype(int)
         pred_cache[sample] = preds.set_index("object_id")
         metadata_list = json.load(open(pc_dir / "crops/crop_metadata.json"))
-        metadata = {(int(x["patch_id"]), round(float(x["padding_ratio"]), 2)): x for x in metadata_list}
+        metadata = {
+            (int(x["patch_id"]), round(float(x["padding_ratio"]), 2)): x for x in metadata_list
+        }
         meta_cache[sample] = metadata
         tile112 = pd.read_csv(pp_dir / "scale_112um/prismnet/tile_predictions.tsv", sep="\t")
         tile_cache[sample] = tile112
-        features112 = pd.read_csv(pp_dir / "scale_112um/tls_tissue_graph/tls_control_features.tsv", sep="\t")
+        features112 = pd.read_csv(
+            pp_dir / "scale_112um/tls_tissue_graph/tls_control_features.tsv", sep="\t"
+        )
         features112 = features112[
             (features112.radius_um == 1000)
             & (features112.semantic_threshold == 0.0)
@@ -520,8 +574,16 @@ def main() -> None:
             p25 = pc_dir / "crops/extracted_patches_25" / f"patch_{oid}.jpeg"
             tex10, tissue10, white10 = image_texture(p10)
             tex25, tissue25, white25 = image_texture(p25)
-            obj112 = objects[(objects.sample_id == sample) & (objects.scale_um == 112) & (objects.object_id == oid)].iloc[0]
-            obj256 = objects[(objects.sample_id == sample) & (objects.scale_um == 256) & (objects.object_id == oid)].iloc[0]
+            obj112 = objects[
+                (objects.sample_id == sample)
+                & (objects.scale_um == 112)
+                & (objects.object_id == oid)
+            ].iloc[0]
+            obj256 = objects[
+                (objects.sample_id == sample)
+                & (objects.scale_um == 256)
+                & (objects.object_id == oid)
+            ].iloc[0]
             center_tiles = tile112[
                 ((tile112.center_x_um - cx) ** 2 + (tile112.center_y_um - cy) ** 2) <= 250**2
             ]
@@ -536,7 +598,10 @@ def main() -> None:
             d256 = float(obj256.ring_0_250_fraction_LYM_paired_difference)
             if d112 * d256 < 0:
                 flags.append("scale_direction_discordant")
-            min_conf = min(max_joint_conf(pd.Series(pred._asdict()), "pad10"), max_joint_conf(pd.Series(pred._asdict()), "pad25"))
+            min_conf = min(
+                max_joint_conf(pd.Series(pred._asdict()), "pad10"),
+                max_joint_conf(pd.Series(pred._asdict()), "pad25"),
+            )
             if min_conf < 0.70:
                 flags.append("low_joint_confidence")
             if len(center_tiles) < 4:
@@ -586,7 +651,13 @@ def main() -> None:
         if row.max_control_match_distance > match_hi:
             flags.append("control_match_high_outlier")
         qc.at[idx, "flags"] = ";".join(flags)
-        high = {"crop_clamped", "scale_direction_discordant", "sparse_inner_tiles", "low_texture", "polygon_size_high_outlier"}
+        high = {
+            "crop_clamped",
+            "scale_direction_discordant",
+            "sparse_inner_tiles",
+            "low_texture",
+            "polygon_size_high_outlier",
+        }
         if set(flags) & high:
             qc.at[idx, "auto_qc_priority"] = "high"
         elif flags:
@@ -605,7 +676,9 @@ def main() -> None:
         row_series = pd.Series(row._asdict())
         row_series["_prediction"] = pred_series
         with openslide.OpenSlide(str(wsi_path)) as wsi:
-            object_panel(sample, row_series, meta_cache[sample], pc_dir, tile_cache[sample], wsi, panel_path)
+            object_panel(
+                sample, row_series, meta_cache[sample], pc_dir, tile_cache[sample], wsi, panel_path
+            )
         panel_paths_by_sample.setdefault(sample, []).append(panel_path)
 
     for sample, paths in panel_paths_by_sample.items():
@@ -632,7 +705,9 @@ def main() -> None:
         "n_auto_qc_high": int((qc.auto_qc_priority == "high").sum()),
         "n_auto_qc_medium": int((qc.auto_qc_priority == "medium").sum()),
         "n_auto_qc_pass": int((qc.auto_qc_priority == "pass").sum()),
-        "n_scale_direction_discordant": int(qc["flags"].str.contains("scale_direction_discordant").sum()),
+        "n_scale_direction_discordant": int(
+            qc["flags"].str.contains("scale_direction_discordant").sum()
+        ),
         "n_crop_clamped": int(qc["flags"].str.contains("crop_clamped").sum()),
         "n_low_joint_confidence": int(qc["flags"].str.contains("low_joint_confidence").sum()),
         "n_radial_records": int(len(radial)),

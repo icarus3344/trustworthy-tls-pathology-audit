@@ -6,13 +6,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 
 import h5py
 import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
@@ -20,11 +19,20 @@ import torch.nn.functional as F
 from PIL import Image, ImageDraw
 
 CLASS_NAMES = ["ADI", "BACK", "DEB", "LYM", "MUC", "MUS", "NORM", "STR", "TUM"]
-COLORS = np.asarray([
-    [255, 153, 153], [205, 205, 205], [153, 76, 0],
-    [0, 80, 255], [255, 255, 153], [255, 0, 0],
-    [0, 200, 0], [255, 153, 51], [128, 0, 128],
-], dtype=np.uint8)
+COLORS = np.asarray(
+    [
+        [255, 153, 153],
+        [205, 205, 205],
+        [153, 76, 0],
+        [0, 80, 255],
+        [255, 255, 153],
+        [255, 0, 0],
+        [0, 200, 0],
+        [255, 153, 51],
+        [128, 0, 128],
+    ],
+    dtype=np.uint8,
+)
 
 
 def sha256(path: Path) -> str:
@@ -88,16 +96,18 @@ def main() -> None:
     target_mpp = a.target_microns / a.patch_size
     centers_x_um = (coords[:, 0] + a.patch_size / 2) * target_mpp
     centers_y_um = (coords[:, 1] + a.patch_size / 2) * target_mpp
-    table = pd.DataFrame({
-        "sample_id": a.sample_id,
-        "tile_id": np.arange(len(coords)),
-        "x_target_px": coords[:, 0],
-        "y_target_px": coords[:, 1],
-        "center_x_um": centers_x_um,
-        "center_y_um": centers_y_um,
-        "predicted_class": [CLASS_NAMES[i] for i in labels],
-        "confidence": confidence,
-    })
+    table = pd.DataFrame(
+        {
+            "sample_id": a.sample_id,
+            "tile_id": np.arange(len(coords)),
+            "x_target_px": coords[:, 0],
+            "y_target_px": coords[:, 1],
+            "center_x_um": centers_x_um,
+            "center_y_um": centers_y_um,
+            "predicted_class": [CLASS_NAMES[i] for i in labels],
+            "confidence": confidence,
+        }
+    )
     for i, name in enumerate(CLASS_NAMES):
         table[f"p_{name}"] = probs[:, i]
     table.to_csv(a.output_dir / "tile_predictions.tsv", sep="\t", index=False)
@@ -128,12 +138,15 @@ def main() -> None:
 
     semantic = np.zeros((height, width, 3), dtype=np.uint8)
     valid = np.isfinite(coord_probs[..., 0])
-    semantic[valid] = COLORS[np.nanargmax(np.where(np.isnan(coord_probs), -1, coord_probs), axis=2)[valid]]
+    semantic[valid] = COLORS[
+        np.nanargmax(np.where(np.isnan(coord_probs), -1, coord_probs), axis=2)[valid]
+    ]
     Image.fromarray(semantic).resize((width * 4, height * 4), Image.Resampling.NEAREST).save(
         a.output_dir / "semantic_map.png"
     )
 
     import openslide
+
     slide = openslide.OpenSlide(str(a.wsi))
     thumb = slide.get_thumbnail((1600, 1600)).convert("RGB")
     overlay = Image.new("RGBA", thumb.size, (0, 0, 0, 0))
@@ -161,11 +174,17 @@ def main() -> None:
             order = idx[np.argsort(-confidence[idx])]
             top = order[: max(1, per_class // 2)]
             rest = np.setdiff1d(idx, top, assume_unique=False)
-            random_part = rng.choice(rest, min(per_class - len(top), len(rest)), replace=False) if len(rest) else []
+            random_part = (
+                rng.choice(rest, min(per_class - len(top), len(rest)), replace=False)
+                if len(rest)
+                else []
+            )
             chosen.extend(np.asarray(top).tolist() + np.asarray(random_part).tolist())
     if len(chosen) < min(100, len(coords)):
         remaining = np.setdiff1d(np.arange(len(coords)), np.asarray(chosen, dtype=int))
-        chosen.extend(rng.choice(remaining, min(100 - len(chosen), len(remaining)), replace=False).tolist())
+        chosen.extend(
+            rng.choice(remaining, min(100 - len(chosen), len(remaining)), replace=False).tolist()
+        )
     chosen = chosen[:100]
     tile_level0 = int(round(a.target_microns / a.source_wsi_mpp))
     cell = 128
@@ -178,7 +197,11 @@ def main() -> None:
         tile = tile.resize((cell, cell), Image.Resampling.BILINEAR)
         col, row = pos % 10, pos // 10
         montage.paste(tile, (col * cell, row * (cell + 18)))
-        md.text((col * cell + 2, row * (cell + 18) + cell), f"{idx}:{CLASS_NAMES[labels[idx]]} {confidence[idx]:.2f}", fill="black")
+        md.text(
+            (col * cell + 2, row * (cell + 18) + cell),
+            f"{idx}:{CLASS_NAMES[labels[idx]]} {confidence[idx]:.2f}",
+            fill="black",
+        )
     montage.save(a.output_dir / "qc_tile_montage.png")
     slide.close()
 
@@ -186,7 +209,8 @@ def main() -> None:
     counts = {name: int(np.sum(labels == i)) for i, name in enumerate(CLASS_NAMES)}
     fractions = {
         name: (float(np.sum(labels[non_back] == i) / non_back.sum()) if non_back.sum() else None)
-        for i, name in enumerate(CLASS_NAMES) if name != "BACK"
+        for i, name in enumerate(CLASS_NAMES)
+        if name != "BACK"
     }
     qc = {
         "sample_id": a.sample_id,
@@ -201,7 +225,9 @@ def main() -> None:
         "source_wsi_mpp": a.source_wsi_mpp,
         "class_counts": counts,
         "non_background_fractions": fractions,
-        "confidence_quantiles": {str(q): float(np.quantile(confidence, q)) for q in [0, .1, .25, .5, .75, .9, 1]},
+        "confidence_quantiles": {
+            str(q): float(np.quantile(confidence, q)) for q in [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]
+        },
         "montage_tile_ids": chosen,
         "h5_attrs": h5_attrs,
         "hashes": {
@@ -212,7 +238,9 @@ def main() -> None:
         "interpretation": "Engineering QC only; predicted semantic classes are not pathology ground truth.",
     }
     (a.output_dir / "qc_summary.json").write_text(json.dumps(qc, indent=2) + "\n")
-    print(json.dumps({"status": "success", "n_tiles": len(coords), "output_dir": str(a.output_dir)}))
+    print(
+        json.dumps({"status": "success", "n_tiles": len(coords), "output_dir": str(a.output_dir)})
+    )
 
 
 if __name__ == "__main__":
