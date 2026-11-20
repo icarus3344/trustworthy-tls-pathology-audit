@@ -1,67 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 310" width="1080" height="310" role="img" aria-labelledby="title description">
+  <title id="title">TLS pathology audit workflow</title>
+  <desc id="description">HookNet-TLS finds candidate polygons on a whole-slide H&amp;E image. A two-stage YOLO cascade assigns maturity labels for robustness tests. PathPrism maps tissue from the same slide. Candidate polygons and tissue tiles are aligned in micrometres for a slide-matched spatial comparison.</desc>
   <defs>
     <style>
-      .title { font: 700 30px Arial, sans-serif; fill: #17324d; }
-      .branch { font: 700 18px Arial, sans-serif; fill: #5b6770; letter-spacing: 1px; }
-      .label { font: 700 22px Arial, sans-serif; fill: #17324d; }
-      .body { font: 18px Arial, sans-serif; fill: #34495e; }
-      .small { font: 16px Arial, sans-serif; fill: #566573; }
-      .box-a { fill: #f4f8fc; stroke: #376b8c; stroke-width: 3; rx: 18; }
-      .box-b { fill: #f1faf8; stroke: #2a7f72; stroke-width: 3; rx: 18; }
-      .source { fill: #f7fafc; stroke: #17324d; stroke-width: 3; rx: 18; }
-      .audit { fill: #fff7e6; stroke: #d48806; stroke-width: 3; rx: 18; }
-      .arrow-a { stroke: #376b8c; stroke-width: 4; fill: none; marker-end: url(#head-a); }
-      .arrow-b { stroke: #2a7f72; stroke-width: 4; fill: none; marker-end: url(#head-b); }
-      .warning { font: 700 17px Arial, sans-serif; fill: #9a5b00; }
+      text { font-family: Arial, sans-serif; }
+      .heading { font-size: 25px; font-weight: 700; fill: #14263d; }
+      .label { font-size: 21px; font-weight: 700; fill: #14263d; }
+      .detail { font-size: 16px; fill: #364a5f; }
+      .source { fill: #fff; stroke: #94a3b8; }
+      .candidate { fill: #eaf2fe; stroke: #91b5e4; }
+      .tissue { fill: #e6f5f1; stroke: #7bbba9; }
+      .result { fill: #fff6df; stroke: #dfb66c; }
+      .arrow { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .blue { stroke: #37669f; marker-end: url(#arrow-blue); }
+      .green { stroke: #277767; marker-end: url(#arrow-green); }
     </style>
-    <marker id="head-a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L9,3 z" fill="#376b8c"/>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M1 1L7 4L1 7Z" fill="#37669f"/>
     </marker>
-    <marker id="head-b" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L9,3 z" fill="#2a7f72"/>
+    <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M1 1L7 4L1 7Z" fill="#277767"/>
     </marker>
   </defs>
 
-  <text x="700" y="42" text-anchor="middle" class="title">One H&amp;E source, two model branches, one reliability audit</text>
+  <rect x="1" y="1" width="1078" height="308" rx="18" fill="#f6f8fc" stroke="#d4dde8"/>
+  <text x="28" y="42" class="heading">Two audit branches from the same H&amp;E slide</text>
 
-  <rect x="550" y="72" width="300" height="100" class="source"/>
-  <text x="700" y="112" text-anchor="middle" class="label">Public H&amp;E WSI</text>
-  <text x="700" y="142" text-anchor="middle" class="body">physical scale · MPP</text>
-  <text x="700" y="165" text-anchor="middle" class="small">same image source for both branches</text>
+  <path class="arrow blue" d="M182 171H199V112H216"/>
+  <path class="arrow green" d="M182 171H199V238H216"/>
+  <path class="arrow blue" d="M433 112H473"/>
+  <path class="arrow blue" d="M714 112H754"/>
+  <path class="arrow green" d="M433 238H473"/>
+  <path class="arrow green" d="M714 238H754"/>
+  <path class="arrow blue" d="M323 151V174H593V199"/>
 
-  <text x="130" y="215" class="branch">A · TLS CANDIDATE AND WORKING MATURITY</text>
-  <rect x="90" y="235" width="270" height="125" class="box-a"/>
-  <text x="225" y="278" text-anchor="middle" class="label">HookNet-TLS</text>
-  <text x="225" y="310" text-anchor="middle" class="body">candidate polygon</text>
-  <text x="225" y="337" text-anchor="middle" class="small">model output, not pathology GT</text>
+  <g>
+    <rect x="28" y="132" width="154" height="78" rx="12" class="source"/>
+    <text x="105" y="166" text-anchor="middle" class="label">Whole slide</text>
+    <text x="105" y="190" text-anchor="middle" class="detail">H&amp;E image</text>
+  </g>
 
-  <rect x="420" y="235" width="300" height="125" class="box-a"/>
-  <text x="570" y="278" text-anchor="middle" class="label">YOLO cascade</text>
-  <text x="570" y="310" text-anchor="middle" class="body">working E / P / S label</text>
-  <text x="570" y="337" text-anchor="middle" class="small">two-stage maturity inference</text>
+  <g>
+    <rect x="216" y="73" width="217" height="78" rx="12" class="candidate"/>
+    <text x="232" y="106" class="label">HookNet-TLS</text>
+    <text x="232" y="130" class="detail">Candidate polygons</text>
+  </g>
+  <g>
+    <rect x="473" y="73" width="241" height="78" rx="12" class="candidate"/>
+    <text x="489" y="106" class="label">Two-stage YOLO</text>
+    <text x="489" y="130" class="detail">TLS maturity predictions</text>
+  </g>
+  <g>
+    <rect x="754" y="73" width="298" height="78" rx="12" class="result"/>
+    <text x="770" y="106" class="label">Robustness audit</text>
+    <text x="770" y="130" class="detail">Crop, stain and attribution tests</text>
+  </g>
 
-  <text x="820" y="215" class="branch">B · SURROUNDING TISSUE SEMANTICS</text>
-  <rect x="790" y="235" width="240" height="125" class="box-b"/>
-  <text x="910" y="278" text-anchor="middle" class="label">STAMP / UNI</text>
-  <text x="910" y="310" text-anchor="middle" class="body">tiles + frozen features</text>
-  <text x="910" y="337" text-anchor="middle" class="small">coordinate-bearing embeddings</text>
-
-  <rect x="1090" y="235" width="260" height="125" class="box-b"/>
-  <text x="1220" y="278" text-anchor="middle" class="label">PrismNet</text>
-  <text x="1220" y="310" text-anchor="middle" class="body">8 tissue classes + BACK</text>
-  <text x="1220" y="337" text-anchor="middle" class="small">probabilities at tile scale</text>
-
-  <path d="M620,172 L620,188 L50,188 L50,298 L90,298" class="arrow-a"/>
-  <path d="M360,298 L420,298" class="arrow-a"/>
-  <path d="M780,172 L780,188 L760,188 L760,298 L790,298" class="arrow-b"/>
-  <path d="M1030,298 L1090,298" class="arrow-b"/>
-
-  <rect x="235" y="430" width="930" height="125" class="audit"/>
-  <text x="700" y="470" text-anchor="middle" class="label">Physical-coordinate alignment + reliability audit</text>
-  <text x="700" y="504" text-anchor="middle" class="body">context · preprocessing · attribution · radial features · matched controls</text>
-  <text x="700" y="533" text-anchor="middle" class="small">slide-aware summaries · uncertainty flags · manual-review queue</text>
-  <path d="M570,360 C570,400 520,405 520,430" class="arrow-a"/>
-  <path d="M1220,360 C1220,410 880,395 880,430" class="arrow-b"/>
-
-  <text x="700" y="592" text-anchor="middle" class="warning">Cross-model concordance on the same H&amp;E is not independent biological validation.</text>
+  <g>
+    <rect x="216" y="199" width="217" height="78" rx="12" class="tissue"/>
+    <text x="232" y="232" class="label">PathPrism</text>
+    <text x="232" y="256" class="detail">STAMP / UNI + PrismNet</text>
+  </g>
+  <g>
+    <rect x="473" y="199" width="241" height="78" rx="12" class="tissue"/>
+    <text x="489" y="232" class="label">Align in µm</text>
+    <text x="489" y="256" class="detail">TLS polygons + tissue tiles</text>
+  </g>
+  <g>
+    <rect x="754" y="199" width="298" height="78" rx="12" class="result"/>
+    <text x="770" y="232" class="label">Spatial concordance</text>
+    <text x="770" y="256" class="detail">Radial features + same-slide controls</text>
+  </g>
 </svg>
